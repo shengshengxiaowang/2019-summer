@@ -26,6 +26,8 @@ public:
     int hexit(char c);
     void send_respond_head(int no,const char* desp,const char* type,long len);
     void send_file(const char* filename);
+    const char *get_file_type(const char *name);
+
 private:
     int cfd;
     int epfd;
@@ -61,9 +63,8 @@ inline http::http(int ccfd,int eepfd)
     if(strncasecmp("get",line,3)==0) //判断是不是get请求
     {
         http_request(line); //处理http请求
-
+        disconnect();  //关闭套接字
     }
-
 }
 
 inline void http::http_request(const char* request)// http请求处理
@@ -88,17 +89,37 @@ inline void http::http_request(const char* request)// http请求处理
         send_respond_head(404, "File Not Found", ".html", -1);
         send_file("404.html");
     }
-    // 判断是目录还是文件
-    // 如果是目录
 
-
-
-//写到这里了
-
-
-
-
+    if(S_ISREG(st.st_mode))  //如果是文件
+    {
+        // 发送消息报头
+        send_respond_head(200,"OK",get_file_type(file),st.st_size);
+        // 发送文件内容
+        send_file(file);
+    }
 }
+
+
+inline const char *http::get_file_type(const char *name)  //通过文件名获取文件的类型函数
+{
+    const char* dot;
+    dot=strrchr(name,'.');   //查找‘.’字符, 如不存在返回NULL
+    if(dot==NULL)
+        return "text/plain; charset=utf-8";
+    if(strcmp(dot,".html")==0 || strcmp(dot,".htm")==0)
+        return "text/html; charset=utf-8";
+    if(strcmp(dot,".jpg")==0 || strcmp(dot,".jpeg")==0)
+        return "image/jpeg";
+    if(strcmp(dot,".gif")==0)
+        return "image/gif";
+    if(strcmp(dot,".png")==0)
+        return "image/png";
+    if (strcmp(dot,".mp3")==0)
+        return "audio/mpeg";
+    return "text/plain; charset=utf-8";
+}
+
+
 
 // 发送文件
 inline void http::send_file(const char* filename)
@@ -157,9 +178,9 @@ inline int http::hexit(char c)  //16进制数转化为10进制
 {
     if(c>='0' && c<='9')
         return (c-'0');
-    if (c>='a' && c<='f')
+    if(c>='a' && c<='f')
         return (c-'a'+10);
-    if (c>='A' && c<='F')
+    if(c>='A' && c<='F')
         return (c-'A'+10);
     return 0;
 }
@@ -213,7 +234,13 @@ int http::get_line(char *buf,int size)//// 解析http请求消息的每一行内
 
 inline http::~http()
 {
-
+    int ret=epoll_ctl(epfd,EPOLL_CTL_DEL,cfd,NULL);
+    if(ret==-1)
+    {
+        perror("epoll_ctl del cfd error");
+        exit(1);
+    }
+    close(cfd);
 }
 
 #endif
