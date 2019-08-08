@@ -1,0 +1,4 @@
+<font color="blue" size="7">当前路径:./<br/></font>
+<a href="http://192.168.3.155:8888/temp.txt" target="_blank">temp.txt</a><br/>
+<a href="http://192.168.3.155:8888/1.c" target="_blank">1.c</a><br/>
+<a href="http://192.168.3.155:8888/1" target="_blank">1</a><br/>
